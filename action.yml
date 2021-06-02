@@ -1,0 +1,21 @@
+name: 'PR Labeler'
+description: 'Automatically labels your PRs based on their content'
+author: 'Eugene Kravtsov'
+inputs:
+  configuration-path:
+    description: 'The path for the label configurations'
+    default: '.github/pr-labeler.yml'
+branding:
+  icon: 'tag'
+  color: 'white'
+runs:
+  using: "composite"
+  steps:
+    - name: Query the PR info
+      run: |
+        URL="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
+        FILES=$(curl -s -X GET -G $URL \
+          --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
+          --header 'content-type: application/json' | jq -c '.[] | .filename')
+        echo $FILES
+      shell: bash
