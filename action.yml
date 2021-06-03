@@ -17,5 +17,8 @@ runs:
         FILES=$(curl -s -X GET -G $URL \
           --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
           --header 'content-type: application/json' | jq -c '.[] | .filename')
-        echo $FILES
+        echo $FILES | while read -d '"' LINE
+        do
+          echo $LINE
+        done
       shell: bash
