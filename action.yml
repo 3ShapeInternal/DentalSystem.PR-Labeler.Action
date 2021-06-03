@@ -18,21 +18,24 @@ runs:
           --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
           --header 'content-type: application/json')
         LABELS=$( echo $CONF | jq '.[] .label')
-        echo Labels $LABELS
+        echo "Labels:" $LABELS
         
         URL_FILES="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
         FILES=$(curl -s -X GET -G $URL_FILES \
           --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
           --header 'content-type: application/json' | jq '.[] .filename')
-        echo $FILES
+        echo "Files:" $FILES
         
         INDEX=0
         for LBL in $LABELS
         do
-          echo $LBL
-          echo $INDEX
-          echo $CONF | jq --argjson INDEX $INDEX --arg FILES "$FILES" '.[$INDEX] .path | .[] | inside($FILES)'
-          let INDEX++
+          if [ $(echo $CONF | jq --arg INDEX $INDEX --arg FILES "$FILES" '.[$INDEX|tonumber] .path | any(.[]; inside($FILES))') = "true" ]
+          then
+            echo $LBL
+          else
+            echo Not $LBL
+          fi
+          INDEX=$((INDEX+1))
         done
         
       shell: bash
