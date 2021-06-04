@@ -32,10 +32,13 @@ runs:
           if [ $(echo $CONF | jq --arg INDEX $INDEX --arg FILES "$FILES" '.[$INDEX|tonumber] .path | any(.[]; inside($FILES))') = "true" ]
           then
             echo $LBL
+            
             COLOR=$(echo $CONF | jq --arg INDEX $INDEX '.[$INDEX|tonumber] .color')
-            echo $COLOR
             curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST "https://api.github.com/repos/${{ github.repository }}/labels" \
               -d "{\"name\": $LBL, \"color\": $COLOR}"
+            
+            curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST \
+              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -d "[ $LBL ]"
           else
             echo Not $LBL
           fi
