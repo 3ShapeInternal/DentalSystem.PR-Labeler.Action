@@ -4,7 +4,7 @@ author: 'Eugene Kravtsov'
 inputs:
   configuration-path:
     description: 'The path for the label configurations'
-    default: '.github/pr-labeler.yml'
+    default: '.github/pr-labeler.json'
 branding:
   icon: 'tag'
   color: 'white'
@@ -32,6 +32,10 @@ runs:
           if [ $(echo $CONF | jq --arg INDEX $INDEX --arg FILES "$FILES" '.[$INDEX|tonumber] .path | any(.[]; inside($FILES))') = "true" ]
           then
             echo $LBL
+            COLOR=$(echo $CONF | jq --arg INDEX $INDEX '.[$INDEX|tonumber] .color')
+            echo $COLOR
+            curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST "https://api.github.com/repos/${{ github.repository }}/labels" \
+              -d "{\"name\": $LBL, \"color\": $COLOR}"
           else
             echo Not $LBL
           fi
