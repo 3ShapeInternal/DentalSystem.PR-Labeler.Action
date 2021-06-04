@@ -20,6 +20,8 @@ runs:
         LABELS=$( echo $CONF | jq '.[] .label')
         echo "Labels:" $LABELS
         
+        URL_LABELS="https://api.github.com/repos/${{ github.repository }}/labels"
+        
         URL_FILES="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
         FILES=$(curl -s -X GET -G $URL_FILES \
           --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
@@ -33,8 +35,10 @@ runs:
           then
             echo $LBL
             
+            echo $(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X GET -G "$URL_LABELS/$LBL")
+            
             COLOR=$(echo $CONF | jq --arg INDEX $INDEX '.[$INDEX|tonumber] .color')
-            curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST "https://api.github.com/repos/${{ github.repository }}/labels" \
+            curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST $URL_LABELS \
               -d "{\"name\": $LBL, \"color\": $COLOR}"
             
             curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST \
