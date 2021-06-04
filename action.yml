@@ -38,18 +38,19 @@ runs:
           # Check whether the label's paths are present among the files
           if [ $(echo $CONF | jq --arg INDEX $INDEX --arg FILES "$FILES" '.[$INDEX|tonumber] .path | any(.[]; inside($FILES))') = "true" ]
           then
-            echo $LBL
             # Check whether the corresponding label exists in the project, if not - create it
             if [ $(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X GET -G "$URL_LABELS/${LBL:1:-1}") -ne 200 ]
             then
               COLOR=$(echo $CONF | jq --arg INDEX $INDEX '.[$INDEX|tonumber] .color')
-              curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST $URL_LABELS -d "{\"name\": $LBL, \"color\": $COLOR}"
+              curl -s -o /dev/null -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST $URL_LABELS -d "{\"name\": $LBL, \"color\": $COLOR}"
+              echo Label $LBL is created.
             fi    
             # Add the label to the Pull Request
-            curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST \
+            curl -s -o /dev/null -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST \
               "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -d "[ $LBL ]"
+            echo Label $LBL is assigned.
           else
-            echo Not $LBL
+            echo Label $LBL is skipped.
           fi
           INDEX=$((INDEX+1))
         done
