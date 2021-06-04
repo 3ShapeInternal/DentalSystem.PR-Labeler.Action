@@ -13,13 +13,17 @@ runs:
   steps:
     - name: Query the PR info
       run: |
-        LABELS=$(cat ${{ inputs.configuration-path }} | jq '.[] .label')
-        echo Labels $LABELS
-        
-        URL="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
-        FILES=$(curl -s -X GET -G $URL \
+        URL_CONF="https://raw.githubusercontent.com/${{ github.repository }}/${{ github.event.pull_request.base.ref }}/${{ inputs.configuration-path }}"
+        CONF=$(curl -s -X GET -G $URL_CONF \
           --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
           --header 'content-type: application/json')
+        LABELS=$( echo $CONF | jq '.[] .label')
+        echo Labels $LABELS
+        
+        URL_FILES="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
+        FILES=$(curl -s -X GET -G $URL_FILES \
+          --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
+          --header 'content-type: application/json' | jq '.[] .filename')
         echo $FILES
         
         INDEX=0
@@ -27,8 +31,8 @@ runs:
         do
           echo $LBL
           echo $INDEX
-          echo $FILES | jq '.[$INDEX] .filename | test($FILTER)'
-          INDEX=$INDEX+1
-        done  
+          echo $CONF | jq --argjson INDEX $INDEX --arg FILES "$FILES" '.[$INDEX] .path | .[] | inside($FILES)'
+          let INDEX++
+        done
         
       shell: bash
