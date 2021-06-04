@@ -11,7 +11,7 @@ branding:
 runs:
   using: "composite"
   steps:
-    - name: Query the PR info
+    - name: Perform the PR labeling
       run: |
         # Get the configuration file
         URL_CONF="https://raw.githubusercontent.com/${{ github.repository }}/${{ github.event.pull_request.base.ref }}/${{ inputs.configuration-path }}"
@@ -30,6 +30,12 @@ runs:
           --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
           --header 'content-type: application/json' | jq '.[] .filename')
         echo "Files:" $FILES
+        
+        # Calculate the amount of changed lines
+        CHANGES=$(curl -s -X GET -G $URL_FILES \
+          --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
+          --header 'content-type: application/json' | jq '[.[] .changes] | reduce .[] as $sum (0; .+$sum)')
+        echo "Changes:" $CHANGES
         
         # Iterate through the configuration file
         INDEX=0
