@@ -18,7 +18,7 @@ runs:
         CONF=$(curl -s -X GET -G $URL_CONF \
           --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
           --header 'content-type: application/json')
-        LABELS=$( echo $CONF | jq '.[] .label')
+        LABELS=$( echo $CONF | jq '.[0] | .[] .label')
         echo "Labels:" $LABELS
         
         # Get the link to the repo's labels
@@ -42,16 +42,17 @@ runs:
         for LBL in $LABELS
         do
           # Check whether the label's paths are present among the files
-          if [ $(echo $CONF | jq --arg INDEX $INDEX --arg FILES "$FILES" '.[$INDEX|tonumber] .path | any(.[]; inside($FILES))') = "true" ]
+          if [ $(echo $CONF | jq --arg INDEX $INDEX --arg FILES "$FILES" '.[0] | .[$INDEX|tonumber] .path | any(.[]; inside($FILES))') = "true" ]
           then
             # Check whether the corresponding label exists in the project, if not - create it
             if [ $(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X GET -G "$URL_LABELS/${LBL:1:-1}") -ne 200 ]
             then
-              COLOR=$(echo $CONF | jq --arg INDEX $INDEX '.[$INDEX|tonumber] .color')
+              COLOR=$(echo $CONF | jq --arg INDEX $INDEX '.[0] | .[$INDEX|tonumber] .color')
               curl -s -o /dev/null -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST $URL_LABELS -d "{\"name\": $LBL, \"color\": $COLOR}"
               echo Label $LBL is created.
             fi    
             # Add the label to the Pull Request
+            # TODO: collect all LBLs and post them as one array
             curl -s -o /dev/null -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST \
               "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -d "[ $LBL ]"
             echo Label $LBL is assigned.
