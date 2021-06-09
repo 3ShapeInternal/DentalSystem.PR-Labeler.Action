@@ -18,8 +18,10 @@ runs:
         CONF=$(curl -s -X GET -G $URL_CONF \
           --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
           --header 'content-type: application/json')
-        LABELS=$( echo $CONF | jq '.[0] | .[] .label')
+        LABELS=$( echo $CONF | jq '.[0] | .[] .label') # .[0] here and further means that projects' labels are always in the 1st group in JSON
+        SIZES=$( echo $CONF | jq '.[1] | .[] .label') # .[1] - the sizes' labels
         echo "Labels:" $LABELS
+        echo "Labels:" $SIZES
         
         # Get the link to the repo's labels
         URL_LABELS="https://api.github.com/repos/${{ github.repository }}/labels"
@@ -58,6 +60,32 @@ runs:
             echo Label $LBL is assigned.
           else
             echo Label $LBL is skipped.
+          fi
+          INDEX=$((INDEX+1))
+        done
+        
+        INDEX=0
+        for LBL in $SIZES
+        do
+          echo $LBL
+          # Check whether the size of changes is equal or less than current label
+          if [ $CHANGES -le $(echo $CONF | jq --arg INDEX $INDEX '.[1] | .[$INDEX|tonumber] .size') ]
+          then
+            # Check whether the corresponding label exists in the project, if not - create it
+            if [ $(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X GET -G "$URL_LABELS/${LBL:1:-1}") -ne 200 ]
+            then
+              COLOR=$(echo $CONF | jq --arg INDEX $INDEX '.[1] | .[$INDEX|tonumber] .color')
+              curl -s -o /dev/null -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST $URL_LABELS -d "{\"name\": $LBL, \"color\": $COLOR}"
+              echo Label $LBL is created.
+            fi    
+            # Add the label to the Pull Request
+            # TODO: collect all LBLs and post them as one array
+            curl -s -o /dev/null -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST \
+              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -d "[ $LBL ]"
+            echo Label $LBL is assigned.
+            break
+          else
+            echo Label $LBL is skipped.            
           fi
           INDEX=$((INDEX+1))
         done
