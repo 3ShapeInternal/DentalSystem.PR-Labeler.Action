@@ -59,6 +59,7 @@ runs:
         # Iterate through the configuration file
         echo "Setting the labels..."
         INDEX=0
+        LABELS_SET=""
         for LBL in $LABELS
         do
           # Check whether the label's paths are present among the files
@@ -74,10 +75,12 @@ runs:
               echo Label $LABEL is created.
             fi    
             # Add the label to the Pull Request
-            # TODO: collect all LBLs and post them as one array
-            curl -s -o /dev/null -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST \
-              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -d "[ $LABEL ]"
-            echo Label $LABEL is assigned.
+            if [ -z "$LABELS_SET" ]
+            then
+              LABELS_SET+=$LABEL
+            else
+              LABELS_SET+=" , "$LABEL
+            fi  
           fi
           INDEX=$((INDEX+1))
         done
@@ -99,14 +102,23 @@ runs:
               echo Label $LABEL is created.
             fi
             # Add the label to the Pull Request
-            curl -s -o /dev/null -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST \
-              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -d "[ $LABEL ]"
-            echo Label $LABEL is assigned.
+            if [ -z "$LABELS_SET" ]
+            then
+              LABELS_SET+=$LABEL
+            else
+              LABELS_SET+=" , "$LABEL
+            fi
             # Do not add more size labels, one is enough
             break
           fi
           INDEX=$((INDEX+1))
         done
+        if [ -n "$LABELS_SET" ]
+        then
+          curl -s -o /dev/null -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -d "[ $LABELS_SET ]"
+          echo Labels $LABELS_SET are assigned.
+        fi
         echo "Done."
         
       shell: bash
