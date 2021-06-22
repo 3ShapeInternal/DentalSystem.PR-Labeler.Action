@@ -57,7 +57,7 @@ runs:
         echo "Changes:" $CHANGES
         
         # Iterate through the configuration file
-        echo "Setting the labels..."
+        echo "Creating the labels..."
         INDEX=0
         LABELS_SET=""
         for LBL in $LABELS
@@ -85,7 +85,7 @@ runs:
           INDEX=$((INDEX+1))
         done
         
-        echo "Setting the size label..."
+        echo "Creating the size label..."
         INDEX=0
         for LBL in $SIZES
         do
@@ -113,9 +113,12 @@ runs:
           fi
           INDEX=$((INDEX+1))
         done
+        # actual setting the labels
+        # Note that PUT is used here instead of POST in order to overwrite the existing labels, not just adding new ones
+        echo "Setting the labels..."
         if [ -n "$LABELS_SET" ]
         then
-          curl -s -o /dev/null -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X POST \
+          curl -s -o /dev/null -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X PUT \
             "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -d "[ $LABELS_SET ]"
           echo Labels $LABELS_SET are assigned.
         fi
