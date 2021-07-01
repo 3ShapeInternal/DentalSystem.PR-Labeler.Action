@@ -8,10 +8,15 @@ inputs:
 branding:
   icon: 'tag'
   color: 'white'
+outputs:
+  labels:
+    description: "The labels that were assigned"
+    value: ${{ steps.labeler.outputs.labels }}
 runs:
   using: "composite"
   steps:
     - name: Perform the PR labeling
+      id: labeler
       run: |
         # Get the configuration file
         URL_CONF="https://raw.githubusercontent.com/${{ github.repository }}/${{ github.event.pull_request.base.ref }}/${{ inputs.configuration-path }}"
@@ -113,15 +118,18 @@ runs:
           fi
           INDEX=$((INDEX+1))
         done
-        # actual setting the labels
-        # Note that PUT is used here instead of POST in order to overwrite the existing labels, not just adding new ones
+        
         echo "Setting the labels..."
         if [ -n "$LABELS_SET" ]
         then
+          # actual setting the labels
+          # Note that PUT is used here instead of POST in order to overwrite the existing labels, not just adding new ones
           curl -s -o /dev/null -H "Authorization: token ${{ env.GITHUB_TOKEN }}" -X PUT \
             "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -d "[ $LABELS_SET ]"
           echo Labels $LABELS_SET are assigned.
         fi
+        # write the output
+        echo "::set-output name=labels::$(echo $LABELS_SET)"
         echo "Done."
         
       shell: bash
