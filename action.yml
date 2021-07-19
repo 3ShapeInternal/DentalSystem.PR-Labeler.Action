@@ -36,29 +36,26 @@ runs:
         
         # Get the list of the changed files from the Pull Request
         URL_FILES="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files?per_page=100"
-        FILES=$(curl -s -X GET -G $URL_FILES \
-          --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
-          --header 'content-type: application/json' | jq '.[] .filename')
+        RAW_FILES=$(curl -s -X GET -G $URL_FILES --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' --header 'content-type: application/json')
+        FILES=$(echo $RAW_FILES | jq '.[] .filename')
         # Count number of filenames assuming that each of them is framed with a pair of "
         NUM_FILES=$(echo $FILES | tr -d -c '"' | wc -m)
+        # Calculate the amount of changed lines
+        CHANGES=$(echo $RAW_FILES | jq '[.[] .changes] | reduce .[] as $sum (0; .+$sum)')        
         # Repeat if all files did not fit on the same page
         PAGE=1
         while (( "$NUM_FILES" >= "200" ))
         do
           PAGE=$((PAGE+1))
           URL_FILES_PAGED=$URL_FILES"&page="$PAGE
-          NEW_FILES=$(curl -s -X GET -G $URL_FILES_PAGED \
-          --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
-          --header 'content-type: application/json' | jq '.[] .filename')
+          NEW_RAW_FILES=$(curl -s -X GET -G $URL_FILES_PAGED --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' --header 'content-type: application/json')
+          NEW_FILES=$(echo $NEW_RAW_FILES | jq '.[] .filename')
           FILES+=" "$NEW_FILES
           NUM_FILES=$(echo $NEW_FILES | tr -d -c '"' | wc -m)
+          NEW_CHANGES=$(echo $NEW_RAW_FILES | jq '[.[] .changes] | reduce .[] as $sum (0; .+$sum)')        
+          CHANGES=$(($CHANGES + $NEW_CHANGES))
         done
         echo "Files:" $FILES
-        
-        # Calculate the amount of changed lines
-        CHANGES=$(curl -s -X GET -G $URL_FILES \
-          --header 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
-          --header 'content-type: application/json' | jq '[.[] .changes] | reduce .[] as $sum (0; .+$sum)')
         echo "Changes:" $CHANGES
         
         # Iterate through the configuration file
