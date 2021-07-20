@@ -28,8 +28,10 @@ runs:
         LABELS=${LABELS// /%20}
         SIZES=$( echo $CONF | jq '.[1] | .[] .label') # .[1] - the sizes' labels
         SIZES=${SIZES// /%20}
+        FILTERS=$( echo $CONF | jq '.[2]') # .[2] - the sizes' labels
         echo "Labels:" $LABELS
         echo "Sizes:" $SIZES
+        echo "Filters: " $FILTERS
         
         # Get the link to the repo's labels
         URL_LABELS="https://api.github.com/repos/${{ github.repository }}/labels"
@@ -40,8 +42,8 @@ runs:
         FILES=$(echo $RAW_FILES | jq '.[] .filename')
         # Count number of filenames assuming that each of them is framed with a pair of "
         NUM_FILES=$(echo $FILES | tr -d -c '"' | wc -m)
-        # Calculate the amount of changed lines
-        CHANGES=$(echo $RAW_FILES | jq '[.[] .changes] | reduce .[] as $sum (0; .+$sum)')        
+        # Calculate the amount of changed lines (excluding lines from files which filenames have filtered extensions)
+        CHANGES=$( echo '[' $RAW_FILES ',' $FILTERS ']' | jq '[ (.[0] | .[]) as $files | .[1] // [] | if all(. as $ext | $files .filename | endswith($ext) | not) then $files .changes else 0 end ] | reduce .[] as $sum (0; .+$sum)')
         # Repeat if all files did not fit on the same page
         PAGE=1
         while (( "$NUM_FILES" >= "200" ))
@@ -52,13 +54,14 @@ runs:
           NEW_FILES=$(echo $NEW_RAW_FILES | jq '.[] .filename')
           FILES+=" "$NEW_FILES
           NUM_FILES=$(echo $NEW_FILES | tr -d -c '"' | wc -m)
-          NEW_CHANGES=$(echo $NEW_RAW_FILES | jq '[.[] .changes] | reduce .[] as $sum (0; .+$sum)')        
+          NEW_CHANGES=$( echo '[' $NEW_RAW_FILES ',' $FILTERS ']' | jq '[ (.[0] | .[]) as $files | .[1] // [] | if all(. as $ext | $files .filename | endswith($ext) | not) then $files .changes else 0 end ] | reduce .[] as $sum (0; .+$sum)')
           CHANGES=$(($CHANGES + $NEW_CHANGES))
         done
         echo "Files:" $FILES
         echo "Changes:" $CHANGES
         
         # Iterate through the configuration file
+        ######### The area labels #########
         echo "Creating the labels..."
         INDEX=0
         LABELS_SET=""
@@ -87,6 +90,7 @@ runs:
           INDEX=$((INDEX+1))
         done
         
+        ######### The size label #########
         echo "Creating the size label..."
         INDEX=0
         for LBL in $SIZES
@@ -116,6 +120,7 @@ runs:
           INDEX=$((INDEX+1))
         done
         
+        ######### Saving the results #########
         echo "Setting the labels..."
         if [ -n "$LABELS_SET" ]
         then
