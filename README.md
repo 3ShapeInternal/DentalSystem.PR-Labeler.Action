@@ -51,8 +51,14 @@ jobs:
     "color": "000000",
     "size": 1000
     }
-  ]
+  ],
+  [".bmp", ".png", ".jpg"]
 ]
 ```
+You can see it consists of 3 sections:
+1. The labels which correspond to the given area of the repository based on `path` filters.
+2. The labels which correspond to the `size` of code review required for the Pull Request.
+3. The list of filename extensions which must not be counted into the code review's size. If this section is omitted, all files are counted.
+NOTE: The regular expressions in the `path` and filename extensions are _not_ supported yet.
 
 That's all! Commit these changes to your repository, and perform the commits.
