@@ -131,7 +131,7 @@ runs:
           echo Labels $LABELS_SET are assigned.
         fi
         # write the output
-        echo "::set-output name=labels::$(echo $LABELS_SET)"
+        echo "labels=$(echo $LABELS_SET)" >> $GITHUB_OUTPUT
         echo "Done."
         
       shell: bash
